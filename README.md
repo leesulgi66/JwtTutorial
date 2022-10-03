@@ -1,4 +1,4 @@
-# JwtTutorial
+# Spring Boot JWT Tutorial
 
 참고자료 : https://github.com/SilverNine/spring-boot-jwt-tutorial
 <br>
