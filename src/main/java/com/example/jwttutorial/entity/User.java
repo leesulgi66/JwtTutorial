@@ -31,7 +31,7 @@ public class User {
     @Column(name = "activated")
     private boolean activated;
 
-    @ManyToMany
+    @ManyToMany //권한 연관관계 나중에 추가로 학습하기 JPA
     @JoinTable(
             name = "user_authority",
             joinColumns = {@JoinColumn(name = "user_id", referencedColumnName = "user_id")},
