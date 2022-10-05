@@ -29,7 +29,7 @@ public class AuthController {
         this.authenticationManagerBuilder = authenticationManagerBuilder;
     }
 
-    @PostMapping("/authenticate") //login api 경로
+    @PostMapping("/login") //login api 경로
     public ResponseEntity<TokenDto> authorize(@Valid @RequestBody LoginDto loginDto) {
 
         //dto로 받은 username과 password를 가지고 authenticationToken객체를 생성
@@ -47,4 +47,6 @@ public class AuthController {
 
         return new ResponseEntity<>(new TokenDto(jwt), httpHeaders, HttpStatus.OK);
     }
+
+
 }

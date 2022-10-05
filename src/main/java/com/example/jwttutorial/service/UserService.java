@@ -24,6 +24,7 @@ public class UserService {
     }
 
     @Transactional
+    //회원가입
     public User signup(UserDto userDto) {
         if (userRepository.findOneWithAuthoritiesByUsername(userDto.getUsername()).orElse(null) != null) {
             throw new DuplicateMemberException("이미 가입되어 있는 유저입니다.");
