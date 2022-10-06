@@ -2,6 +2,7 @@ package com.example.jwttutorial.service;
 
 import com.example.jwttutorial.dto.LoginDto;
 import com.example.jwttutorial.dto.TokenDto;
+import com.example.jwttutorial.dto.TokenResponseDto;
 import com.example.jwttutorial.dto.UserDto;
 import com.example.jwttutorial.entity.Authority;
 import com.example.jwttutorial.entity.RefreshToken;
@@ -12,6 +13,8 @@ import com.example.jwttutorial.jwt.TokenProvider;
 import com.example.jwttutorial.repository.RefreshTokenJpaRepository;
 import com.example.jwttutorial.repository.UserRepository;
 import com.example.jwttutorial.util.SecurityUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class UserService {
     private final UserRepository userRepository;
@@ -78,7 +82,7 @@ public class UserService {
     }
 
     @Transactional
-    public ResponseEntity<TokenDto> getTokenDtoResponseEntity(LoginDto loginDto) {
+    public ResponseEntity<TokenResponseDto> getTokenDtoResponseEntity(LoginDto loginDto) {
         Optional<User> user = userRepository.findOneWithAuthoritiesByUsername(loginDto.getUsername());
         //dto로 받은 username과 password를 가지고 authenticationToken객체를 생성
         UsernamePasswordAuthenticationToken authenticationToken =
@@ -95,13 +99,23 @@ public class UserService {
                 .token(jwt.getRefreshToken())
                 .build();
 
-        refreshTokenJpaRepository.save(refreshToken);
+
+        if(!refreshTokenJpaRepository.findBykey(user.get().getUserId()).isPresent()) {
+            refreshTokenJpaRepository.save(refreshToken);
+        }else {
+            refreshTokenJpaRepository.deleteByKey(user.get().getUserId());
+            refreshTokenJpaRepository.save(refreshToken);
+        }
+
 
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + jwt.getAccessToken());
-        httpHeaders.add(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + jwt.getRefreshToken());
 
-        return new ResponseEntity<>(jwt, httpHeaders, HttpStatus.OK);
+        return new ResponseEntity<>(TokenResponseDto.builder()
+                .grantType("bearer ")
+                .accessToken(jwt.getAccessToken())
+                .accessTokenExpireDate(jwt.getAccessTokenExpireDate())
+                .build(), httpHeaders, HttpStatus.OK);
     }
 
 }
