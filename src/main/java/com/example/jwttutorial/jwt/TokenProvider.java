@@ -1,5 +1,7 @@
 package com.example.jwttutorial.jwt;
 
+import antlr.Token;
+import com.example.jwttutorial.dto.TokenDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -28,15 +30,18 @@ public class TokenProvider implements InitializingBean {
 
     private final String secret;
     private final long tokenValidityInMilliseconds;
+    private final long refreshTokenValidityInMilliseconds;
 
     private Key key;
 
     //1. Bean이 생성이 되고 의존성 주입까지 받은 다음에
     public TokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.token-validity-in-seconds}") long tokenValidityInMilliseconds) {
+            @Value("${jwt.token-validity-in-seconds}") long tokenValidityInMilliseconds,
+            @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityInMilliseconds) {
         this.secret = secret;
         this.tokenValidityInMilliseconds = tokenValidityInMilliseconds * 1000;
+        this.refreshTokenValidityInMilliseconds = refreshTokenValidityInMilliseconds * 1000;
     }
 
     //2. 주입받은 secret값을 Base64 Decode해서 key 변수에 할당
@@ -47,20 +52,33 @@ public class TokenProvider implements InitializingBean {
     }
 
     //Authentication정보를 받아서 토큰 생성
-    public String createToken(Authentication authentication) {
+    public TokenDto createToken(Authentication authentication) {
         String authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
         long now = (new Date()).getTime();
         Date validity = new Date(now + this.tokenValidityInMilliseconds);
+        Date validity2 = new Date(now + this.refreshTokenValidityInMilliseconds);
 
-        return Jwts.builder()
+        String accessToken = Jwts.builder()
                 .setSubject(authentication.getName())
                 .claim(AUTHORITIES_KEY, authorities)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .setExpiration(validity)
                 .compact();
+
+        String refreshToken = Jwts.builder()
+                .signWith(key, SignatureAlgorithm.HS512)
+                .setExpiration(validity2)
+                .compact();
+
+        return TokenDto.builder()
+                .grantType("bearer ")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .accessTokenExpireDate(tokenValidityInMilliseconds)
+                .build();
     }
 
     //Token에 담겨있는 정보를 이용해 Authentication 객체를 리턴하는 메소드 생성
