@@ -1,5 +1,9 @@
 package com.example.jwttutorial.jwt;
 
+import com.example.jwttutorial.entity.RefreshToken;
+import com.example.jwttutorial.entity.User;
+import com.example.jwttutorial.repository.RefreshTokenJpaRepository;
+import com.example.jwttutorial.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -20,6 +24,8 @@ public class JwtFilter extends GenericFilterBean {
     public static final String AUTHORIZATION_HEADER = "Authorization";
 
     private TokenProvider tokenProvider;
+    private RefreshTokenJpaRepository refreshTokenJpaRepository;
+    private UserRepository userRepository;
 
     //tokenProvider를 주입받는다.
     public JwtFilter(TokenProvider tokenProvider) {
@@ -34,11 +40,24 @@ public class JwtFilter extends GenericFilterBean {
         String jwt = resolveToken(httpServletRequest);
         String requestURI = httpServletRequest.getRequestURI();
 
-        if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) { //받아온 토큰이 유효성 검증이 완료되면
+        if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt) == TokenProvider.JwtCode.ACCESS) { //받아온 토큰이 유효성 검증이 완료되면
             Authentication authentication = tokenProvider.getAuthentication(jwt); //authentication 객체를 반환하고
             SecurityContextHolder.getContext().setAuthentication(authentication); //securityContextHolder에 저장해준다
             logger.debug("Security Context에 '{}' 인증 정보를 저장했습니다, uri: {}", authentication.getName(), requestURI);
-        } else {
+        }
+        else if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt) == TokenProvider.JwtCode.EXPIRED){
+            System.out.println("여기로 와라");
+//            Authentication authentication = tokenProvider.getAuthentication(jwt);
+//            User user = userRepository.findByUsername(authentication.getName()).orElseThrow(
+//                    () -> new NullPointerException("존재하는 아이디가 없습니다.")
+//            );
+//            RefreshToken refreshToken = refreshTokenJpaRepository.findBykey(user.getUserId()).orElseThrow(
+//                    ()-> new NullPointerException("존재하는 refresh Token이 없습니다.")
+//            );
+//            String refreshTokenString = refreshToken.getToken();
+        }
+
+        else {
             logger.debug("유효한 JWT 토큰이 없습니다, uri: {}", requestURI);
         }
 

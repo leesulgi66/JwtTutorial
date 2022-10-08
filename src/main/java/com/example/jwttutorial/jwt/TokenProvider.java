@@ -1,10 +1,11 @@
 package com.example.jwttutorial.jwt;
 
-import antlr.Token;
 import com.example.jwttutorial.dto.TokenDto;
+import com.example.jwttutorial.service.SecurityService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -16,6 +17,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpServletResponse;
 import java.security.Key;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,8 +33,8 @@ public class TokenProvider implements InitializingBean {
     private final String secret;
     private final long tokenValidityInMilliseconds;
     private final long refreshTokenValidityInMilliseconds;
-
     private Key key;
+    private SecurityService securityService;
 
     //1. Bean이 생성이 되고 의존성 주입까지 받은 다음에
     public TokenProvider(
@@ -105,20 +107,26 @@ public class TokenProvider implements InitializingBean {
     }
 
     //토큰을 받아서 유효성 검사
-    public boolean validateToken(String token) {
+    public JwtCode validateToken(String token) {
         try{
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-            return true;
+            return JwtCode.ACCESS;
         } catch (io.jsonwebtoken.security.SignatureException | MalformedJwtException e) {
             logger.info("잘못된 JWT 서명입니다.");
         } catch (ExpiredJwtException e ){
-            logger.info("만료된 JWT 토큰입니다.");
+            return JwtCode.EXPIRED;
         } catch (UnsupportedJwtException e ){
             logger.info("지원되지 않는 JWT 토큰입니다.");
         } catch (IllegalArgumentException e ) {
             logger.info("JWT 토큰이 잘못되었습니다.");
         }
-        return false;
+        return JwtCode.DENIED;
+    }
+
+    public static enum JwtCode{
+        DENIED,
+        ACCESS,
+        EXPIRED;
     }
 }
 
