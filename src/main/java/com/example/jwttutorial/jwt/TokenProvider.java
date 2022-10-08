@@ -1,11 +1,11 @@
 package com.example.jwttutorial.jwt;
 
 import com.example.jwttutorial.dto.TokenDto;
+import com.example.jwttutorial.repository.UserRepository;
 import com.example.jwttutorial.service.SecurityService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -17,11 +17,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
-import javax.servlet.http.HttpServletResponse;
 import java.security.Key;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -33,17 +30,20 @@ public class TokenProvider implements InitializingBean {
     private final String secret;
     private final long tokenValidityInMilliseconds;
     private final long refreshTokenValidityInMilliseconds;
+    private final UserRepository userRepository;
     private Key key;
     private SecurityService securityService;
 
     //1. Bean이 생성이 되고 의존성 주입까지 받은 다음에
     public TokenProvider(
+            UserRepository userRepository,
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.token-validity-in-seconds}") long tokenValidityInMilliseconds,
-            @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityInMilliseconds) {
+            @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityInMilliseconds){
         this.secret = secret;
         this.tokenValidityInMilliseconds = tokenValidityInMilliseconds * 1000;
         this.refreshTokenValidityInMilliseconds = refreshTokenValidityInMilliseconds * 1000;
+        this.userRepository = userRepository;
     }
 
     //2. 주입받은 secret값을 Base64 Decode해서 key 변수에 할당
@@ -121,6 +121,23 @@ public class TokenProvider implements InitializingBean {
             logger.info("JWT 토큰이 잘못되었습니다.");
         }
         return JwtCode.DENIED;
+    }
+
+    //토큰에서 usernmae 꺼내기
+    String JwtUsername(String jwt) {
+        Base64.Decoder decoder = Base64.getDecoder();
+        String[] jwtPayload = jwt.split("\\.");
+        System.out.println(Arrays.toString(jwtPayload));
+        byte[] decodedBytes = decoder.decode(jwtPayload[1].getBytes());
+        String tokenString = new String(decodedBytes);
+        System.out.println(tokenString);
+        String username = tokenString.split(":")[1].split(",")[0].replace("\"","");
+        System.out.println(username);
+        return username;
+    }
+
+    Optional<com.example.jwttutorial.entity.User> user(String username) {
+        return userRepository.findByUsername(username);
     }
 
     public static enum JwtCode{
