@@ -1,10 +1,9 @@
 package com.example.jwttutorial.jwt;
 
-import com.example.jwttutorial.entity.User;
-import com.example.jwttutorial.repository.RefreshTokenJpaRepository;
-import com.example.jwttutorial.repository.UserRepository;
+import com.example.jwttutorial.dto.TokenDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
@@ -16,7 +15,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.Optional;
 
 
 public class JwtFilter extends GenericFilterBean {
@@ -47,18 +45,23 @@ public class JwtFilter extends GenericFilterBean {
         }
         else if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt) == TokenProvider.JwtCode.EXPIRED){
             logger.info("만료된 토큰 확인");
-            System.out.println(jwt);
+            System.out.println("---만료된 토큰 : " + jwt);
             String username = tokenProvider.JwtUsername(jwt);
-            System.out.println(username);
-            Optional<User> user = tokenProvider.user(username);
-            System.out.println(user);
-//            RefreshToken refreshToken = refreshTokenJpaRepository.findBykey(user.getUserId()).orElseThrow(
-//                    ()-> new NullPointerException("존재하는 refresh Token이 없습니다.")
-//            );
-//            String refreshTokenString = refreshToken.getToken();
-//            System.out.println(refreshTokenString);
-        }
+            String refreshToken = tokenProvider.userToken(username);
+            if(tokenProvider.validateToken(refreshToken) == TokenProvider.JwtCode.ACCESS) {
+                System.out.println("토큰 새로 발급 해줘용");
+                Authentication authentication = tokenProvider.getAuthentication(refreshToken);
+                TokenDto reJwt = tokenProvider.createToken(authentication);
+                System.out.println("새토큰 : " + reJwt.getAccessToken());
 
+                HttpHeaders httpHeaders = new HttpHeaders();
+                httpHeaders.add(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + reJwt.getAccessToken());
+
+            } else{
+                System.out.println("바이바이");
+                logger.info("유효한 refreshToken이 없습니다. {}" , "다시 로그인 해주세요");
+            }
+        }
         else {
             logger.debug("유효한 JWT 토큰이 없습니다, uri: {}", requestURI);
         }

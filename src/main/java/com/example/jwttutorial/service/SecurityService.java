@@ -59,7 +59,6 @@ public class SecurityService {
             refreshTokenJpaRepository.save(refreshToken);
         }
 
-
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + jwt.getAccessToken());
 

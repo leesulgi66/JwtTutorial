@@ -1,6 +1,9 @@
 package com.example.jwttutorial.jwt;
 
+import com.example.jwttutorial.dto.AccesTokenDto;
 import com.example.jwttutorial.dto.TokenDto;
+import com.example.jwttutorial.entity.RefreshToken;
+import com.example.jwttutorial.repository.RefreshTokenJpaRepository;
 import com.example.jwttutorial.repository.UserRepository;
 import com.example.jwttutorial.service.SecurityService;
 import io.jsonwebtoken.*;
@@ -17,6 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
+import javax.servlet.http.HttpServletResponse;
 import java.security.Key;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,12 +35,14 @@ public class TokenProvider implements InitializingBean {
     private final long tokenValidityInMilliseconds;
     private final long refreshTokenValidityInMilliseconds;
     private final UserRepository userRepository;
+    private final RefreshTokenJpaRepository refreshTokenJpaRepository;
     private Key key;
     private SecurityService securityService;
 
     //1. Bean이 생성이 되고 의존성 주입까지 받은 다음에
     public TokenProvider(
             UserRepository userRepository,
+            RefreshTokenJpaRepository refreshTokenJpaRepository,
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.token-validity-in-seconds}") long tokenValidityInMilliseconds,
             @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityInMilliseconds){
@@ -44,6 +50,7 @@ public class TokenProvider implements InitializingBean {
         this.tokenValidityInMilliseconds = tokenValidityInMilliseconds * 1000;
         this.refreshTokenValidityInMilliseconds = refreshTokenValidityInMilliseconds * 1000;
         this.userRepository = userRepository;
+        this.refreshTokenJpaRepository = refreshTokenJpaRepository;
     }
 
     //2. 주입받은 secret값을 Base64 Decode해서 key 변수에 할당
@@ -71,6 +78,8 @@ public class TokenProvider implements InitializingBean {
                 .compact();
 
         String refreshToken = Jwts.builder()
+                .setSubject(authentication.getName())
+                .claim(AUTHORITIES_KEY, authorities)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .setExpiration(validity2)
                 .compact();
@@ -81,6 +90,10 @@ public class TokenProvider implements InitializingBean {
                 .refreshToken(refreshToken)
                 .accessTokenExpireDate(tokenValidityInMilliseconds)
                 .build();
+    }
+
+    public AccesTokenDto accesToken(){
+        return new AccesTokenDto();
     }
 
     //Token에 담겨있는 정보를 이용해 Authentication 객체를 리턴하는 메소드 생성
@@ -127,17 +140,23 @@ public class TokenProvider implements InitializingBean {
     String JwtUsername(String jwt) {
         Base64.Decoder decoder = Base64.getDecoder();
         String[] jwtPayload = jwt.split("\\.");
-        System.out.println(Arrays.toString(jwtPayload));
         byte[] decodedBytes = decoder.decode(jwtPayload[1].getBytes());
         String tokenString = new String(decodedBytes);
-        System.out.println(tokenString);
         String username = tokenString.split(":")[1].split(",")[0].replace("\"","");
-        System.out.println(username);
         return username;
     }
 
-    Optional<com.example.jwttutorial.entity.User> user(String username) {
-        return userRepository.findByUsername(username);
+    String userToken(String username) {
+        Optional<com.example.jwttutorial.entity.User> user = userRepository.findByUsername(username);
+        Long userKey = user.get().getUserId();
+        Optional<RefreshToken> refreshToken = refreshTokenJpaRepository.findBykey(userKey);
+        logger.info("represhToken 확인 : {}",refreshToken.get().getToken());
+        return refreshToken.get().getToken();
+    }
+
+    // 어세스 토큰 헤더 설정
+    public void setHeaderAccessToken(HttpServletResponse response, String accessToken) {
+        response.setHeader("authorization", "bearer "+ accessToken);
     }
 
     public static enum JwtCode{

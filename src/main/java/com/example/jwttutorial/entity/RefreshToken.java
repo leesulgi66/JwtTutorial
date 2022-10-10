@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "REFRESHI_TOKEN")
+@Table(name = "REFRESH_TOKEN")
 @Getter
 @NoArgsConstructor
 public class RefreshToken extends BaseTimeEntity{
