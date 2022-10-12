@@ -20,7 +20,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
-import javax.servlet.http.HttpServletResponse;
 import java.security.Key;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -142,8 +141,7 @@ public class TokenProvider implements InitializingBean {
         String[] jwtPayload = jwt.split("\\.");
         byte[] decodedBytes = decoder.decode(jwtPayload[1].getBytes());
         String tokenString = new String(decodedBytes);
-        String username = tokenString.split(":")[1].split(",")[0].replace("\"","");
-        return username;
+        return tokenString.split(":")[1].split(",")[0].replace("\"","");
     }
 
     String userToken(String username) {
@@ -152,11 +150,6 @@ public class TokenProvider implements InitializingBean {
         Optional<RefreshToken> refreshToken = refreshTokenJpaRepository.findBykey(userKey);
         logger.info("represhToken 확인 : {}",refreshToken.get().getToken());
         return refreshToken.get().getToken();
-    }
-
-    // 어세스 토큰 헤더 설정
-    public void setHeaderAccessToken(HttpServletResponse response, String accessToken) {
-        response.setHeader("authorization", "bearer "+ accessToken);
     }
 
     public static enum JwtCode{

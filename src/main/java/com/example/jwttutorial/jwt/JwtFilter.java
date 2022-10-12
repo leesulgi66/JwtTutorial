@@ -1,6 +1,7 @@
 package com.example.jwttutorial.jwt;
 
 import com.example.jwttutorial.dto.TokenDto;
+import com.example.jwttutorial.service.SecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -14,6 +15,7 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 
@@ -35,6 +37,7 @@ public class JwtFilter extends GenericFilterBean {
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
+        HttpServletResponse httpServletReponse = (HttpServletResponse) servletResponse;
         String jwt = resolveToken(httpServletRequest);
         String requestURI = httpServletRequest.getRequestURI();
 
@@ -45,20 +48,18 @@ public class JwtFilter extends GenericFilterBean {
         }
         else if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt) == TokenProvider.JwtCode.EXPIRED){
             logger.info("만료된 토큰 확인");
-            System.out.println("---만료된 토큰 : " + jwt);
+            System.out.println("-만료된 토큰 : " + jwt);
             String username = tokenProvider.JwtUsername(jwt);
             String refreshToken = tokenProvider.userToken(username);
             if(tokenProvider.validateToken(refreshToken) == TokenProvider.JwtCode.ACCESS) {
-                System.out.println("토큰 새로 발급 해줘용");
+                logger.info("새로운 토큰으로 발급");
                 Authentication authentication = tokenProvider.getAuthentication(refreshToken);
                 TokenDto reJwt = tokenProvider.createToken(authentication);
-                System.out.println("새토큰 : " + reJwt.getAccessToken());
+                System.out.println("-새토큰 : " + reJwt.getAccessToken());
 
-                HttpHeaders httpHeaders = new HttpHeaders();
-                httpHeaders.add(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + reJwt.getAccessToken());
+                httpServletReponse.addHeader(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + reJwt.getAccessToken());
 
             } else{
-                System.out.println("바이바이");
                 logger.info("유효한 refreshToken이 없습니다. {}" , "다시 로그인 해주세요");
             }
         }

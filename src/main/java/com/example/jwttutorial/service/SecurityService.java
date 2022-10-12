@@ -52,7 +52,8 @@ public class SecurityService {
                 .key(user.get().getUserId())
                 .token(jwt.getRefreshToken())
                 .build();
-        if(!refreshTokenJpaRepository.findBykey(user.get().getUserId()).isPresent()) {
+
+        if(refreshTokenJpaRepository.findBykey(user.get().getUserId()).isEmpty()) {
             refreshTokenJpaRepository.save(refreshToken);
         }else {
             refreshTokenJpaRepository.deleteByKey(user.get().getUserId());
