@@ -1,25 +1,21 @@
 package com.example.jwttutorial.jwt;
 
 import com.example.jwttutorial.dto.TokenDto;
-import com.example.jwttutorial.service.SecurityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
-import org.springframework.web.filter.GenericFilterBean;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 
-public class JwtFilter extends GenericFilterBean {
+public class JwtFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtFilter.class);
 
     public static final String AUTHORIZATION_HEADER = "Authorization";
@@ -35,11 +31,9 @@ public class JwtFilter extends GenericFilterBean {
     //GenericFilterBean의 doFilter를 Override. 실제 필터링 로직은 doFilter 내부에 작성
     //doFilter는 토큰의 인증정보를 Securitycontext에 저장하는 역할 수행!!
     @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
-        HttpServletResponse httpServletReponse = (HttpServletResponse) servletResponse;
-        String jwt = resolveToken(httpServletRequest);
-        String requestURI = httpServletRequest.getRequestURI();
+    public void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws IOException, ServletException {
+        String jwt = resolveToken(request);
+        String requestURI = request.getRequestURI();
 
         if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt) == TokenProvider.JwtCode.ACCESS) { //받아온 토큰이 유효성 검증이 완료되면
             Authentication authentication = tokenProvider.getAuthentication(jwt); //authentication 객체를 반환하고
@@ -57,7 +51,7 @@ public class JwtFilter extends GenericFilterBean {
                 TokenDto reJwt = tokenProvider.createToken(authentication);
                 System.out.println("-새토큰 : " + reJwt.getAccessToken());
 
-                httpServletReponse.addHeader(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + reJwt.getAccessToken());
+                response.addHeader(JwtFilter.AUTHORIZATION_HEADER, "Bearer " + reJwt.getAccessToken());
 
             } else{
                 logger.info("유효한 refreshToken이 없습니다. {}" , "다시 로그인 해주세요");
@@ -67,7 +61,7 @@ public class JwtFilter extends GenericFilterBean {
             logger.debug("유효한 JWT 토큰이 없습니다, uri: {}", requestURI);
         }
 
-        filterChain.doFilter(servletRequest, servletResponse);
+        filterChain.doFilter(request, response);
     }
 
     //Request Header에서 토큰 정보를 꺼내오기 위한메소드
